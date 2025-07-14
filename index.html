@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Categorizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input[type="url"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        
+        .button-group {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f5e8;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+            display: none;
+        }
+        
+        .error {
+            background-color: #ffe8e8;
+            border-left-color: #f44336;
+        }
+        
+        .warning {
+            background-color: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+        }
+        
+        .config-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .config-section h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        
+        .config-section input {
+            margin-bottom: 10px;
+        }
+        
+        .config-button {
+            background-color: #007bff;
+            font-size: 14px;
+            padding: 8px 16px;
+        }
+        
+        .config-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>URL Categorizer</h1>
+        
+        <div class="config-section">
+            <h3>Backend Configuration</h3>
+            <label for="backendUrl">Backend API URL:</label>
+            <input 
+                type="url" 
+                id="backendUrl" 
+                placeholder="http://your-azure-vm-ip:3000"
+                value="http://localhost:3000"
+            >
+            <button type="button" id="testConnection" class="config-button">Test Connection</button>
+        </div>
+        
+        <form id="urlForm">
+            <div class="input-group">
+                <label for="urlInput">Enter URL:</label>
+                <input 
+                    type="url" 
+                    id="urlInput" 
+                    name="url" 
+                    placeholder="https://example.com"
+                    required
+                >
+            </div>
+            
+            <div class="button-group">
+                <button type="submit" id="submitBtn">Submit URL</button>
+                <button type="button" id="clearBtn">Clear</button>
+            </div>
+        </form>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Processing URL...</p>
+        </div>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('urlForm');
+        const urlInput = document.getElementById('urlInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const backendUrl = document.getElementById('backendUrl');
+        const testConnection = document.getElementById('testConnection');
+
+        // Load saved backend URL from localStorage
+        const savedBackendUrl = localStorage.getItem('backendUrl');
+        if (savedBackendUrl) {
+            backendUrl.value = savedBackendUrl;
+        }
+
+        // Save backend URL when changed
+        backendUrl.addEventListener('change', function() {
+            localStorage.setItem('backendUrl', this.value);
+        });
+
+        // Test backend connection
+        testConnection.addEventListener('click', async function() {
+            const url = backendUrl.value.trim();
+            if (!url) {
+                showResult('Please enter a backend URL', 'error');
+                return;
+            }
+
+            setLoadingState(true);
+            
+            try {
+                const response = await fetch(`${url}/api/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult(`Backend connection successful! Status: ${data.status}`, 'success');
+                } else {
+                    showResult('Backend connection failed. Please check the URL and ensure the backend is running.', 'error');
+                }
+            } catch (error) {
+                showResult('Cannot connect to backend. Please check the URL and network connection.', 'error');
+            } finally {
+                setLoadingState(false);
+            }
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const url = urlInput.value.trim();
+            const backend = backendUrl.value.trim();
+            
+            if (!url) {
+                showResult('Please enter a URL', 'error');
+                return;
+            }
+            
+            if (!backend) {
+                showResult('Please configure the backend URL first', 'error');
+                return;
+            }
+            
+            try {
+                // Validate URL format
+                new URL(url);
+                
+                // Show loading state
+                setLoadingState(true);
+                
+                // Send request to backend
+                const response = await fetch(`${backend}/api/categorize`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (data.category === 'Currently Investigating') {
+                        showResult(
+                            `URL did not match the database and has been added for investigation. Please retry in 30 minutes.\n\nURL: ${data.url}\nStatus: ${data.category}`, 
+                            'warning'
+                        );
+                    } else {
+                        showResult(
+                            `URL Category Found!\n\nURL: ${data.url}\nCategory: ${data.category}`, 
+                            'success'
+                        );
+                    }
+                } else {
+                    showResult(`Error: ${data.message}`, 'error');
+                }
+                
+            } catch (error) {
+                if (error.name === 'TypeError' && error.message.includes('URL')) {
+                    showResult('Please enter a valid URL (e.g., https://example.com)', 'error');
+                } else {
+                    showResult('Network error. Please check if the backend server is running and accessible.', 'error');
+                }
+            } finally {
+                setLoadingState(false);
+            }
+        });
+
+        // Handle clear button
+        clearBtn.addEventListener('click', function() {
+            urlInput.value = '';
+            result.style.display = 'none';
+            urlInput.focus();
+        });
+
+        // Set loading state
+        function setLoadingState(isLoading) {
+            loading.style.display = isLoading ? 'block' : 'none';
+            submitBtn.disabled = isLoading;
+            testConnection.disabled = isLoading;
+            if (isLoading) {
+                result.style.display = 'none';
+            }
+        }
+
+        // Show result message
+        function showResult(message, type) {
+            result.textContent = message;
+            result.className = `result ${type}`;
+            result.style.display = 'block';
+        }
+
+        // Focus on URL input when page loads
+        window.addEventListener('load', function() {
+            urlInput.focus();
+        });
+    </script>
+</body>
+</html>

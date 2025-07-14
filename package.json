@@ -1,0 +1,14 @@
+json
+   {
+     "name": "url-categorizer-frontend",
+     "version": "1.0.0",
+     "description": "Frontend for URL categorization app",
+     "main": "index.html",
+     "scripts": {
+       "start": "node server.js"
+     },
+     "dependencies": {},
+     "engines": {
+       "node": ">=14.0.0"
+     }
+   }
