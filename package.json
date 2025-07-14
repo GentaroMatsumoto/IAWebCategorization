@@ -1,4 +1,4 @@
-   {
+{
      "name": "url-categorizer-frontend",
      "version": "1.0.0",
      "description": "Frontend for URL categorization app",
@@ -10,4 +10,4 @@
      "engines": {
        "node": ">=14.0.0"
      }
-   }
+}
